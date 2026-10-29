@@ -1,0 +1,48 @@
+
+name: Build HMZ APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Extract project ZIP
+        run: |
+          mkdir source
+          unzip -q HMZ-Android-Fixed.zip -d source
+          ROOT=$(find source -name settings.gradle.kts -print -quit)
+          if [ -z "$ROOT" ]; then
+            echo "Missing settings.gradle.kts"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$(dirname "$ROOT")" >> "$GITHUB_ENV"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        run: |
+          cd "$PROJECT_DIR"
+          gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HMZ-APK
+          path: source/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
